@@ -40,7 +40,10 @@ const getEnv = (key: string, fallback = "") =>
   (process.env[key] || fallback).trim().replace(/^["']|["']$/g, "");
 
 function getGraphQLClient() {
-  const endpoint = getEnv("BLINK_URL", "https://www.28waves.com/blink-proxy/graphql");
+  const envUrl = getEnv("BLINK_URL");
+  const endpoint = (!envUrl || envUrl.includes("api.blink.sv"))
+    ? "https://bitnotes-users.knyamuniga16.workers.dev/blink-proxy/graphql"
+    : envUrl;
   const apiKey = getEnv("BLINK_API_KEY");
   return new GraphQLClient(endpoint, {
     headers: {
