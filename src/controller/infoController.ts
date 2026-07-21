@@ -72,34 +72,6 @@ export async function putUsernameInfoController(
     res.status(400);
     return res.json({ error: true, message: "This username is already taken" });
   }
-  if (!paymentToken) {
-    const { paymentRequest } = await lnProvider.createInvoice(5000);
-    const token = sign(
-      {
-        pubkey: req.authData!.data.pubkey,
-        username: parsedUsername,
-        paymentRequest,
-      },
-      process.env.JWT_SECRET!,
-    );
-    return res.status(402).json({
-      error: true,
-      message: "Payment required",
-      data: { paymentToken: token, paymentRequest },
-    });
-  }
-  const payload = verify(
-    paymentToken,
-    process.env.JWT_SECRET!,
-  ) as PaymentJWTPayload;
-  if (payload.pubkey !== req.authData!.data.pubkey) {
-    res.status(403);
-    res.json({ error: true, message: "Forbidden!" });
-  }
-  const { paid } = await lnProvider.checkPayment(payload.paymentRequest);
-  if (!paid) {
-    return res.status(402).json({ error: true, message: "Invoice unpaid..." });
-  }
   try {
     await User.upsertUsernameByPubkey(
       req.authData!.data.pubkey,
