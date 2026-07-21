@@ -39,15 +39,17 @@ export type BlinkStatusReponse = {
 const getEnv = (key: string, fallback = "") =>
   (process.env[key] || fallback).trim().replace(/^["']|["']$/g, "");
 
-const endpoint = getEnv("BLINK_URL", "https://api.blink.sv/graphql");
-
-const graphQLClient = new GraphQLClient(endpoint, {
-  headers: {
-    "X-API-KEY": getEnv("BLINK_API_KEY"),
-    "Content-Type": "application/json",
-    "User-Agent": "Mozilla/5.0 (compatible; npubcash-server/1.0)",
-  },
-});
+function getGraphQLClient() {
+  const endpoint = getEnv("BLINK_URL", "https://api.blink.sv/graphql");
+  const apiKey = getEnv("BLINK_API_KEY");
+  return new GraphQLClient(endpoint, {
+    headers: {
+      "X-API-KEY": apiKey,
+      "Content-Type": "application/json",
+      "User-Agent": "Mozilla/5.0 (compatible; npubcash-server/1.0)",
+    },
+  });
+}
 
 export class BlinkProvider implements PaymentProvider {
   async createInvoice(amount: number, memo?: string, descriptionHash?: string) {
@@ -101,7 +103,7 @@ export async function sendPayment(
       paymentRequest: invoice,
     },
   };
-  const data = (await graphQLClient.request(
+  const data = (await getGraphQLClient().request(
     mutation,
     variables,
   )) as BlinkPaymentResponse;
@@ -143,7 +145,7 @@ export async function createBlinkInvoice(
     },
   };
 
-  const data = (await graphQLClient.request(
+  const data = (await getGraphQLClient().request(
     mutation,
     variables,
   )) as {
@@ -183,7 +185,7 @@ export async function checkPaymentStatus(paymentRequest: string) {
     },
   };
 
-  const data = (await graphQLClient.request(
+  const data = (await getGraphQLClient().request(
     query,
     variables,
   )) as BlinkStatusReponse;
@@ -212,7 +214,7 @@ export async function registerCallback(endpoint: string) {
     },
   };
 
-  const data = (await graphQLClient.request(query, variables)) as {
+  const data = (await getGraphQLClient().request(query, variables)) as {
     callbackEndpointAdd: {
       errors?: { code: string; message: string };
       id: string;
@@ -237,7 +239,7 @@ export async function getCallbackEndpoints() {
     }
   `;
 
-  const data = (await graphQLClient.request(
+  const data = (await getGraphQLClient().request(
     query,
   )) as BlinkCallbackQueryResponse;
   return data.me.defaultAccount.callbackEndpoints.map((cb) => cb.url);
