@@ -36,11 +36,14 @@ export type BlinkStatusReponse = {
   };
 };
 
-const endpoint = `${process.env.BLINK_URL!}`;
+const getEnv = (key: string, fallback = "") =>
+  (process.env[key] || fallback).trim().replace(/^["']|["']$/g, "");
+
+const endpoint = getEnv("BLINK_URL", "https://api.blink.sv/graphql");
 
 const graphQLClient = new GraphQLClient(endpoint, {
   headers: {
-    "X-API-KEY": process.env.BLINK_API_KEY || "",
+    "X-API-KEY": getEnv("BLINK_API_KEY"),
     "Content-Type": "application/json",
     "User-Agent": "Mozilla/5.0 (compatible; npubcash-server/1.0)",
   },
@@ -136,7 +139,7 @@ export async function createBlinkInvoice(
     input: {
       amount: amountInSats,
       memo,
-      walletId: process.env.BLINK_WALLET_ID,
+      walletId: getEnv("BLINK_WALLET_ID"),
     },
   };
 
