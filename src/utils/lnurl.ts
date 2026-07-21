@@ -1,7 +1,8 @@
 import { ZAP_PUBKEY } from "../config";
 
-export function createLnurlResponse(username: string) {
-  const hostname = process.env.HOSTNAME || "https://www.28waves.com";
+export function createLnurlResponse(username: string, reqHost?: string) {
+  const envHost = process.env.HOSTNAME;
+  const hostname = reqHost ? `https://${reqHost}` : (envHost || "https://www.28waves.com");
   const domain = hostname.replace(/^https?:\/\//, "").replace(/^www\./, "");
   const identifier = `${username}@${domain}`;
 
@@ -10,11 +11,14 @@ export function createLnurlResponse(username: string) {
     ["text/identifier", identifier],
   ]);
 
+  const maxSendable = Number(process.env.LNURL_MAX_AMOUNT) || 1000000000;
+  const minSendable = Number(process.env.LNURL_MIN_AMOUNT) || 1000;
+
   if (process.env.ZAP_SECRET_KEY) {
     return {
       callback: `${hostname}/.well-known/lnurlp/${username}`,
-      maxSendable: Number(process.env.LNURL_MAX_AMOUNT),
-      minSendable: Number(process.env.LNURL_MIN_AMOUNT),
+      maxSendable,
+      minSendable,
       metadata,
       tag: "payRequest",
       allowsNostr: true,
@@ -23,10 +27,11 @@ export function createLnurlResponse(username: string) {
   } else {
     return {
       callback: `${hostname}/.well-known/lnurlp/${username}`,
-      maxSendable: Number(process.env.LNURL_MAX_AMOUNT),
-      minSendable: Number(process.env.LNURL_MIN_AMOUNT),
+      maxSendable,
+      minSendable,
       metadata,
       tag: "payRequest",
     };
   }
 }
+

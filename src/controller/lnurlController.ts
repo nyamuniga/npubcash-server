@@ -28,28 +28,24 @@ export async function lnurlController(
       nip19.decode(userParam as `npub1${string}`);
       username = userParam;
     } catch {
-      res.status(401);
-      return next(new Error("Invalid npub / public key"));
+      return res.status(400).json({ status: "ERROR", reason: "Invalid npub / public key" });
     }
   } else {
     const userObj = await User.getUserByName(userParam.toLowerCase());
     if (!userObj) {
-      res.status(404);
-      return next(new Error("User not found"));
+      return res.status(404).json({ status: "ERROR", reason: "User not found" });
     }
     username = userObj.name;
   }
   if (!amount) {
-    const lnurlResponse = createLnurlResponse(username);
+    const lnurlResponse = createLnurlResponse(username, req.get("host"));
     return res.json(lnurlResponse);
   }
   const parsedAmount = parseInt(amount);
-  if (
-    parsedAmount > Number(process.env.LNURL_MAX_AMOUNT) ||
-    parsedAmount < Number(process.env.LNURL_MIN_AMOUNT)
-  ) {
-    const err = new Error("Invalid amount");
-    return next(err);
+  const maxAmount = Number(process.env.LNURL_MAX_AMOUNT) || 1000000000;
+  const minAmount = Number(process.env.LNURL_MIN_AMOUNT) || 1000;
+  if (parsedAmount > maxAmount || parsedAmount < minAmount) {
+    return res.status(400).json({ status: "ERROR", reason: "Invalid amount" });
   }
   if (nostr) {
     try {
