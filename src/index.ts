@@ -24,9 +24,8 @@ async function startServer() {
   try {
     await setupCallbacks();
   } catch (e) {
-    console.warn("Failed to setup callbacks...");
+    console.warn("Failed to setup callbacks... (continuing startup)");
     console.log(e);
-    process.exit(1);
   }
   console.log("starting server...");
   app.listen(process.env.PORT || 8000);

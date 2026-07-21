@@ -40,8 +40,9 @@ const endpoint = `${process.env.BLINK_URL!}`;
 
 const graphQLClient = new GraphQLClient(endpoint, {
   headers: {
-    "X-API-KEY": process.env.BLINK_API_KEY!,
+    "X-API-KEY": process.env.BLINK_API_KEY || "",
     "Content-Type": "application/json",
+    "User-Agent": "Mozilla/5.0 (compatible; npubcash-server/1.0)",
   },
 });
 
