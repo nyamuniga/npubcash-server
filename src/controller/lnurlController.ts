@@ -62,11 +62,9 @@ export async function lnurlController(
   try {
     const mintRes = await wallet.requestMint(Math.floor(parsedAmount / 1000));
     ({ pr: mintPr, hash: mintHash } = mintRes);
-  } catch (e) {
-    console.log("Failed to create invoice: Mint failed");
-    console.log(e);
-    res.status(500);
-    return res.json({ error: true, message: "Something went wrong..." });
+  } catch (e: any) {
+    console.log("Failed to create invoice: Mint failed", e);
+    return res.status(400).json({ status: "ERROR", reason: `Mint failed: ${e?.message || e}` });
   }
 
   const { amount: mintAmount, expiresIn } = parseInvoice(mintPr);
@@ -80,11 +78,9 @@ export async function lnurlController(
         ? createHash("sha256").update(JSON.stringify(zapRequest)).digest("hex")
         : undefined,
     );
-  } catch (e) {
-    console.log("Failed to create invoice: Invoice creation failed");
-    console.log(e);
-    res.status(500);
-    return res.json({ error: true, message: "Something went wrong..." });
+  } catch (e: any) {
+    console.log("Failed to create invoice: Invoice creation failed", e);
+    return res.status(400).json({ status: "ERROR", reason: `Lightning payment creation failed: ${e?.message || e}` });
   }
 
   Analyzer.getInstance().logPaymentCreated(invoiceRes.paymentHash, expiresIn);
@@ -98,14 +94,12 @@ export async function lnurlController(
       zapRequest,
       parsedAmount / 1000,
     );
-    res.json({
+    return res.json({
       pr: invoiceRes.paymentRequest,
       routes: [],
     });
-  } catch (e) {
-    console.log("Failed to create invoice: Database connection failed");
-    console.log(e);
-    res.status(500);
-    return res.json({ error: true, message: "Something went wrong..." });
+  } catch (e: any) {
+    console.log("Failed to create invoice: Database connection failed", e);
+    return res.status(400).json({ status: "ERROR", reason: `Database failed: ${e?.message || e}` });
   }
 }
