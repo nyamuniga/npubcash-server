@@ -13,10 +13,20 @@ app.use(compression());
 app.use(cors());
 app.use(requireHTTPS);
 
+import fs from "fs";
+
 app.use(routes);
-app.use("/", express.static(path.join(__dirname, "../npubcash-website/dist")));
-app.get("*", (_, res: Response) => {
-  res.sendFile(path.join(__dirname, "../npubcash-website/dist/index.html"));
-});
+
+const staticIndex = path.join(__dirname, "../npubcash-website/dist/index.html");
+if (fs.existsSync(staticIndex)) {
+  app.use("/", express.static(path.join(__dirname, "../npubcash-website/dist")));
+  app.get("*", (_, res: Response) => {
+    res.sendFile(staticIndex);
+  });
+} else {
+  app.use("*", (_, res: Response) => {
+    res.status(404).json({ status: "ERROR", reason: "Route not found" });
+  });
+}
 
 export default app;
