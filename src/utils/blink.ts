@@ -117,10 +117,8 @@ export async function createBlinkInvoice(
   descriptionHash?: string,
 ) {
   const mutation = gql`
-    mutation LnInvoiceCreateOnBehalfOfRecipient(
-      $input: LnInvoiceCreateOnBehalfOfRecipientInput!
-    ) {
-      lnInvoiceCreateOnBehalfOfRecipient(input: $input) {
+    mutation lnInvoiceCreate($input: LnInvoiceCreateInput!) {
+      lnInvoiceCreate(input: $input) {
         invoice {
           paymentRequest
           paymentHash
@@ -138,21 +136,30 @@ export async function createBlinkInvoice(
     input: {
       amount: amountInSats,
       memo,
-      descriptionHash,
-      recipientWalletId: process.env.BLINK_WALLET_ID,
+      walletId: process.env.BLINK_WALLET_ID,
     },
   };
 
   const data = (await graphQLClient.request(
     mutation,
     variables,
-  )) as BlinkInvoiceResponse;
+  )) as {
+    lnInvoiceCreate: {
+      invoice?: {
+        paymentRequest: string;
+        paymentHash: string;
+        paymentSecret: string;
+        satoshis: number;
+      };
+      errors?: { message: string }[];
+    };
+  };
 
-  if (!data.lnInvoiceCreateOnBehalfOfRecipient.invoice) {
-    console.log(data.lnInvoiceCreateOnBehalfOfRecipient.errors);
-    throw new Error("Failed to retrieve invoice");
+  if (!data.lnInvoiceCreate.invoice) {
+    console.log(data.lnInvoiceCreate.errors);
+    throw new Error(data.lnInvoiceCreate.errors?.[0]?.message || "Failed to retrieve invoice");
   }
-  return data.lnInvoiceCreateOnBehalfOfRecipient.invoice;
+  return data.lnInvoiceCreate.invoice;
 }
 
 export async function checkPaymentStatus(paymentRequest: string) {
