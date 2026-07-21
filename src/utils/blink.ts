@@ -145,26 +145,32 @@ export async function createBlinkInvoice(
     },
   };
 
-  const data = (await getGraphQLClient().request(
-    mutation,
-    variables,
-  )) as {
-    lnInvoiceCreate: {
-      invoice?: {
-        paymentRequest: string;
-        paymentHash: string;
-        paymentSecret: string;
-        satoshis: number;
+  try {
+    const data = (await getGraphQLClient().request(
+      mutation,
+      variables,
+    )) as {
+      lnInvoiceCreate: {
+        invoice?: {
+          paymentRequest: string;
+          paymentHash: string;
+          paymentSecret: string;
+          satoshis: number;
+        };
+        errors?: { message: string }[];
       };
-      errors?: { message: string }[];
     };
-  };
 
-  if (!data.lnInvoiceCreate.invoice) {
-    console.log(data.lnInvoiceCreate.errors);
-    throw new Error(data.lnInvoiceCreate.errors?.[0]?.message || "Failed to retrieve invoice");
+    if (!data.lnInvoiceCreate.invoice) {
+      console.log(data.lnInvoiceCreate.errors);
+      throw new Error(data.lnInvoiceCreate.errors?.[0]?.message || "Failed to retrieve invoice");
+    }
+    return data.lnInvoiceCreate.invoice;
+  } catch (err: any) {
+    const key = getEnv("BLINK_API_KEY");
+    const masked = key ? `${key.substring(0, 12)}... (len: ${key.length})` : "EMPTY";
+    throw new Error(`${err.message} [Debug key in use: ${masked}]`);
   }
-  return data.lnInvoiceCreate.invoice;
 }
 
 export async function checkPaymentStatus(paymentRequest: string) {
