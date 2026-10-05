@@ -39,7 +39,15 @@ export function setupStore() {
 }
 
 export async function setupDatabase(retries = 5, delayMs = 2000) {
-  const port = process.env.PGPORT || 5432;
+  let host = process.env.PGHOST || "";
+  let port = process.env.PGPORT || 5432;
+  if (host.includes(":")) {
+    const parts = host.split(":");
+    host = parts[0];
+    if (parts[1]) {
+      port = parts[1];
+    }
+  }
   const sslParam =
     process.env.PGSSLMODE
       ? `?sslmode=${process.env.PGSSLMODE}`
@@ -49,7 +57,7 @@ export async function setupDatabase(retries = 5, delayMs = 2000) {
 
   if (
     !process.env.DATABASE_URL &&
-    (!process.env.PGUSER || !process.env.PGHOST || !process.env.PGDATABASE)
+    (!process.env.PGUSER || !host || !process.env.PGDATABASE)
   ) {
     throw new Error(
       "Missing PostgreSQL configuration. Please ensure PGUSER, PGPASSWORD, PGHOST, and PGDATABASE (or DATABASE_URL) are set in your environment.",
@@ -60,7 +68,7 @@ export async function setupDatabase(retries = 5, delayMs = 2000) {
     process.env.DATABASE_URL ||
     `postgres://${process.env.PGUSER}:${encodeURIComponent(
       process.env.PGPASSWORD || "",
-    )}@${process.env.PGHOST}:${port}/${process.env.PGDATABASE}${sslParam}`;
+    )}@${host}:${port}/${process.env.PGDATABASE}${sslParam}`;
 
   if (databaseUrl.includes("runsite.app") && !databaseUrl.includes("sslmode=")) {
     const separator = databaseUrl.includes("?") ? "&" : "?";
