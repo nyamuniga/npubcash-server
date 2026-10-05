@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { useWebSocketImplementation } from "nostr-tools";
 import app from "./app";
 import { setupDatabase, setupStore } from "./utils/database";

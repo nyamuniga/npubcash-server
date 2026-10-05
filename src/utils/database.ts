@@ -1,21 +1,69 @@
+import "dotenv/config";
 import { Pool, QueryConfig, QueryResultRow } from "pg";
 import migrate from "node-pg-migrate";
 import path from "path";
 import { WithdrawalStore } from "../models/withdrawal";
 
-const pool = new Pool();
+const isExternalRenderHost =
+  process.env.PGHOST?.includes("runsite.app") ||
+  process.env.PGHOST?.includes("render.com");
+
+const isRenderHost =
+  isExternalRenderHost || Boolean(process.env.PGHOST?.startsWith("dpg-"));
+
+const sslConfig =
+  process.env.PGSSLMODE === "no-verify" ||
+  process.env.PGSSLMODE === "require" ||
+  isExternalRenderHost
+    ? { rejectUnauthorized: false }
+    : undefined;
+
+const pool = new Pool(
+  process.env.DATABASE_URL
+    ? {
+        connectionString: process.env.DATABASE_URL,
+        ssl:
+          process.env.DATABASE_URL.includes("sslmode=no-verify") ||
+          process.env.DATABASE_URL.includes("sslmode=require") ||
+          isRenderHost
+            ? { rejectUnauthorized: false }
+            : undefined,
+      }
+    : sslConfig
+    ? { ssl: sslConfig }
+    : undefined,
+);
 
 export function setupStore() {
   return WithdrawalStore.getInstance(pool);
 }
 
 export async function setupDatabase() {
-  const dbConfig = {
-    connectionString: `postgres://${process.env.PGUSER}:${process.env.PGPASSWORD}@${process.env.PGHOST}:${process.env.PGPORT}/${process.env.PGDATABASE}`,
-  };
+  const port = process.env.PGPORT || 5432;
+  const sslParam =
+    process.env.PGSSLMODE
+      ? `?sslmode=${process.env.PGSSLMODE}`
+      : isExternalRenderHost
+      ? "?sslmode=no-verify"
+      : "";
+
+  if (
+    !process.env.DATABASE_URL &&
+    (!process.env.PGUSER || !process.env.PGHOST || !process.env.PGDATABASE)
+  ) {
+    throw new Error(
+      "Missing PostgreSQL configuration. Please ensure PGUSER, PGPASSWORD, PGHOST, and PGDATABASE (or DATABASE_URL) are set in your environment.",
+    );
+  }
+
+  const databaseUrl =
+    process.env.DATABASE_URL ||
+    `postgres://${process.env.PGUSER}:${encodeURIComponent(
+      process.env.PGPASSWORD || "",
+    )}@${process.env.PGHOST}:${port}/${process.env.PGDATABASE}${sslParam}`;
 
   await migrate({
-    databaseUrl: dbConfig.connectionString,
+    databaseUrl,
     dir: "migrations",
     direction: "up",
     migrationsTable: "pgmigrations",
