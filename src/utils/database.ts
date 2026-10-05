@@ -38,7 +38,7 @@ export function setupStore() {
   return WithdrawalStore.getInstance(pool);
 }
 
-export async function setupDatabase() {
+export async function setupDatabase(retries = 5, delayMs = 2000) {
   const port = process.env.PGPORT || 5432;
   const sslParam =
     process.env.PGSSLMODE
@@ -56,20 +56,39 @@ export async function setupDatabase() {
     );
   }
 
-  const databaseUrl =
+  let databaseUrl =
     process.env.DATABASE_URL ||
     `postgres://${process.env.PGUSER}:${encodeURIComponent(
       process.env.PGPASSWORD || "",
     )}@${process.env.PGHOST}:${port}/${process.env.PGDATABASE}${sslParam}`;
 
-  await migrate({
-    databaseUrl,
-    dir: "migrations",
-    direction: "up",
-    migrationsTable: "pgmigrations",
-    count: Infinity,
-    log: console.log,
-  });
+  if (databaseUrl.includes("runsite.app") && !databaseUrl.includes("sslmode=")) {
+    const separator = databaseUrl.includes("?") ? "&" : "?";
+    databaseUrl = `${databaseUrl}${separator}sslmode=no-verify`;
+  }
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      await migrate({
+        databaseUrl,
+        dir: "migrations",
+        direction: "up",
+        migrationsTable: "pgmigrations",
+        count: Infinity,
+        log: console.log,
+      });
+      return;
+    } catch (err) {
+      if (attempt === retries) {
+        throw err;
+      }
+      console.warn(
+        `Database connection/migration failed (attempt ${attempt}/${retries}). Retrying in ${delayMs / 1000}s...`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      delayMs = Math.min(delayMs * 1.5, 10000);
+    }
+  }
 }
 
 export async function getDbClient() {
